@@ -19,3 +19,7 @@ use Twilio\Rest\Client;
 
     
 // });
+
+Route::get("/", function(){
+    return response()->json(["message" => "Backend Suruh Aja"]);
+});
