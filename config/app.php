@@ -94,7 +94,8 @@ return [
     | are secure. You should do this prior to deploying the application.
     |
     */
-
+    'TWILIO_SID' => env('TWILIO_SID'),
+    'TWILIO_TOKEN' => env('TWILIO_TOKEN'),
     'cipher' => 'AES-256-CBC',
 
     'key' => env('APP_KEY'),

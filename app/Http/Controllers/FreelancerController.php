@@ -3,7 +3,8 @@
 namespace App\Http\Controllers;
 
 use App\Models\Freelancer;
-
+use App\Models\Jasa;
+use App\Models\Order;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
@@ -49,7 +50,21 @@ class FreelancerController extends Controller
     }
     public function order(Request $request) {
         $request->validate([
-            'jasa_id'
-        ])
+            'jasa_id'  => 'required',
+            'freelancer_id' => 'required',
+        ]);
+        $freelancer = Freelancer::where('user_id', Auth::user()->id)->first();
+        if($freelancer == null){
+            return response()->json(['message' => 'freelancer belum terdaftar','status'=>400]);
+        }
+        $order = Order::create([
+            'jasa_id' => $request->jasa_id,
+            'freelancer_id' => $request->freelancer_id,
+            'user_id' => Jasa::find($request->jasa_id)->user_id,
+            'status' => 'pending',
+        ]);
+
+        return response()->json(['message' => 'success data berhasil di simpan', 'data' => $order,'status'=>200]);
+        
     }
 }

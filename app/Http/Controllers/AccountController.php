@@ -42,8 +42,8 @@ class AccountController extends Controller
             'password' => Hash::make($request->password),
             'email' => $request->email,
         ]);
-        $sid = env('TWILIO_SID');
-        $token = env('TWILIO_TOKEN');
+        $sid = config('TWILIO_SID');
+        $token = config('TWILIO_TOKEN');
         $twilio = new Client($sid, $token);
     
         $message = $twilio->messages->create(
