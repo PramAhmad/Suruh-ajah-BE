@@ -6,6 +6,7 @@ use Illuminate\Http\Request;
 use App\Models\User;
 use App\Models\Otp;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Str;
 use Twilio\Rest\Client;
@@ -15,13 +16,11 @@ class AccountController extends Controller
     public function register(Request $request)
     {
        $request->validate([
-            'phone' => 'required|unique:users',
+           
             'password' => 'required',
             'email' => 'required|email|unique:users',
             'name' => 'required',
         ],[
-            'phone.required' => 'Nomor telepon harus diisi',
-            'phone.unique' => 'Nomor telepon sudah terdaftar',
             'email.required' => 'Email harus diisi',
             'email.email' => 'Email tidak valid',
             'email.unique' => 'Email sudah terdaftar',
@@ -30,29 +29,18 @@ class AccountController extends Controller
        
 
         $otp = Str::random(6);
-
-        Otp::create([
-            'phone' => $request->phone,
-            'otp' => $otp,
-            'is_valid' => true,
-        ]);
+        
         User::create([
             'name' => $request->name,
             'phone' => $request->phone,
             'password' => Hash::make($request->password),
             'email' => $request->email,
         ]);
-        $sid = config('TWILIO_SID');
-        $token = config('TWILIO_TOKEN');
-        $twilio = new Client($sid, $token);
-    
-        $message = $twilio->messages->create(
-            $request->phone,
-            [
-                'from' => "+15416157447",
-                'body' => $otp
-            ]
-        );
+        Mail::send('email.otp', ['otp' => $otp], function ($message) use ($request) {
+        $message->to($request->email);
+        $message->subject('Verifikasi Email');
+    });
+
 
 
         return response()->json(['message' => 'OTP telah dikirim.',
@@ -62,53 +50,41 @@ class AccountController extends Controller
     public function verifyOtp(Request $request)
     {
         $request->validate([
-            'phone' => 'required',
+            'email' => 'required|email',
             'otp' => 'required',
         ]);
-    
-        $otp = Otp::where('phone', $request->phone)
-            ->where('otp', $request->otp)
-            ->first();
-    
+
+        $otp = Otp::where('email', $request->email)->where('otp', $request->otp)->first();
+
         if (!$otp) {
-            return response()->json(['message' => 'OTP tidak valid.', 'status' => 400], 400);
+            return response()->json(['message' => 'OTP tidak valid.'], 401);
         }
- 
-        $user = User::where('phone', $request->phone)->first();
-    
-        $user->update(['phone_verified_at' => now()]);
 
-        $otp->update(['is_valid' => 1]);
+        $user = User::where('email', $request->email)->first();
+        $user->email_verified_at = now();
+        $user->save();
 
-        $token = $user->createToken('authToken')->plainTextToken;
-    
-        return response()->json(['token' => $token, 'user' => $user], 200);
+        $otp->delete();
+
+        return response()->json(['message' => 'Email berhasil diverifikasi.'], 200);
     }
     
 
     public function login(Request $request)
     {
         $request->validate([
-            'phone' => 'required',
+            'email' => 'required|email',
             'password' => 'required',
-            'type' => 'required|in:freelancer,user',
         ]);
 
-        $user = User::where('phone', $request->phone)->first();
+        $user = User::where('email', $request->email)->first();
 
         if (!$user || !Hash::check($request->password, $user->password)) {
-            return response()->json(['message' => 'Login gagal.'], 401);
+            return response()->json(['message' => 'Email atau password salah.'], 401);
         }
 
-        if (!$user->phone_verified_at) {
-            return response()->json(['message' => 'Nomor telepon belum diverifikasi.'], 401);
-        }
-     
-        if ($request->type == 'freelancer' && !$user->freelancer) {
-            return response()->json(['message' => 'Anda bukan freelancer.'], 401);
-        }
-        $token = $user->createToken('authToken')->plainTextToken;
+        $token = $user->createToken('token')->plainTextToken;
 
-        return response()->json(['token' => $token, 'user' => $user], 200);
+        return response()->json(['token' => $token]);
     }
 }
