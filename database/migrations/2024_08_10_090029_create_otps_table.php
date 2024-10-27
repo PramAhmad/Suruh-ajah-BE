@@ -13,7 +13,7 @@ return new class extends Migration
     {
         Schema::create('otps', function (Blueprint $table) {
             $table->id();
-            $table->string('phone');
+            $table->string('email');
             $table->string('otp');
             $table->boolean('is_valid')->default(true);
             $table->timestamps();

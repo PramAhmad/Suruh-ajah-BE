@@ -1,0 +1,1 @@
+<p>Berhasil {{$otp}}</p>

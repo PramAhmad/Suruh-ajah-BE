@@ -17,7 +17,7 @@ class AccountController extends Controller
     {
        $request->validate([
            
-            'password' => 'required',
+            'password' => 'required|min:6',
             'email' => 'required|email|unique:users',
             'name' => 'required',
         ],[
@@ -25,26 +25,35 @@ class AccountController extends Controller
             'email.email' => 'Email tidak valid',
             'email.unique' => 'Email sudah terdaftar',
             'password.required' => 'Password harus diisi',
+            'password.min' => 'Password minimal 6 karakter',
         ]);
        
 
-        $otp = Str::random(6);
-        
+    //    number ot lenght 4
+        $otp = mt_rand(1000, 9999);
         User::create([
             'name' => $request->name,
-            'phone' => $request->phone,
             'password' => Hash::make($request->password),
             'email' => $request->email,
+        ]);
+        Otp::create([
+            'email' => $request->email,
+            'otp' => $otp,
         ]);
         Mail::send('email.otp', ['otp' => $otp], function ($message) use ($request) {
         $message->to($request->email);
         $message->subject('Verifikasi Email');
+
     });
 
 
 
         return response()->json(['message' => 'OTP telah dikirim.',
-    'status'=>200]);
+        'data' => [
+            'email' => $request->email,
+            'otp' => $otp,
+        ],
+    'status'=>201]);
     }
 
     public function verifyOtp(Request $request)
@@ -65,8 +74,13 @@ class AccountController extends Controller
         $user->save();
 
         $otp->delete();
-
-        return response()->json(['message' => 'Email berhasil diverifikasi.'], 200);
+        
+        $token = $user->createToken('token')->plainTextToken;
+        return response()->json(
+            ['message' => 'Email berhasil diverifikasi.',
+            'token' => $token,
+            'status'=>200
+        ] );
     }
     
 
@@ -85,6 +99,6 @@ class AccountController extends Controller
 
         $token = $user->createToken('token')->plainTextToken;
 
-        return response()->json(['token' => $token]);
+        return response()->json(['token' => $token,'status'=>"200"]);
     }
 }
